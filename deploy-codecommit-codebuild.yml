@@ -1,0 +1,207 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: creating CodeBuild to deploy to CloudFormation
+
+Parameters:
+  
+  TeamEmail:
+    Type: String
+    Default: sbg-devops@standardbank.co.za
+    Description: team e-amil address
+  
+  TeamName:
+    Type: String
+    Default: Sbg-DevOps
+    Description: the name of the team
+  
+  CodeBuildName:
+    Type: String
+    Default: aws-codebuild-poc-example
+    Description: the name of the CodeBuild project
+  
+  CodeRepoName: #use small letters
+    Type: String
+    Default: aws-codebuild-poc-example
+    Description: the name of the Codecommit used by codebuild
+  
+  ServicePolicyName:
+    Type: String
+    Default: Bounded-policy-codebuild-deploy-example
+    Description: a policy attached to the codebuild service role
+  
+  ServiceRoleName:
+    Type: String
+    Default: Bounded-codebuild-service-role-example
+    Description: a service role used by codebuild
+  
+  #a role that will be assumed for cross-account access
+  RoleNameCross:
+    Type: String
+    Default: Bounded-codebuild-service-role-cross-poc
+  PolicyNameCross: 
+    Type: String
+    Default: bounded-codebuild-service-policy-cross
+  
+
+    #make sure the default value here is the account you are deploying to: this account IDs are linked to credentials of the respective accounts
+    #once this has been deployed, this change can be done manually on the console as the deployment is moving to a different account
+  DeploymentID:
+    Type: String
+    Default: "573185292006"
+    Description: this represent the aws account ID
+    AllowedValues:
+      - "573185292006"  #tools-account
+      - "735721437522" #DEV
+      - "662040593462"  #PROD
+      - "183723809405"  #SIT
+      - "866715056275"  #ZERO-BILLING
+ 
+  StackName: #the name should be the same as of that already existing on cloudformation or be the same name you create on cloudformation when deploying this stack
+    Type: String
+    Default: creating-s3-bucket-poc-example
+    Description: this is the stack name codebuild will create on Cloudformation
+
+  REGION:
+    Type: String
+    Default: "af-south-1"
+    Description: this is the region where cloudformation will deploy the stack in the specific account
+    AllowedValues:
+      - "af-south-1"    #Cape Town
+      - "eu-west-1"     #Ireland
+      - "us-east-1"     #north virginia
+      - "eu-central-1"  #Frankfurt
+
+
+
+
+Resources:
+  # CodeBuild uses this bucket to store temporary packaged files to deploy to CloudFormation
+  S3BucketCodeBuild:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref CodeRepoName
+      VersioningConfiguration:
+        Status: Enabled
+     
+      Tags:
+        - Key: Team-Email
+          Value: !Ref TeamEmail
+        - Key: Tier
+          Value: 'MCA'
+        - Key: Team-Name
+          Value: !Ref TeamName  
+
+  AWSCodeCommitRepo:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Ref CodeRepoName
+      RepositoryDescription: storing templates for creating IAC via CodeBuild
+      Tags:
+        - Key: Team-Email
+          Value: !Ref TeamEmail
+        - Key: Team-Name
+          Value: !Ref TeamName
+  
+
+  AWSCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref CodeBuildName
+      Description: a codebuild service project that will deploy cloudformation templates
+      ServiceRole: !GetAtt BoundedCodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Value: !Ref DeploymentID
+            Name: DEPLOYMENT_TARGET
+            Type: PLAINTEXT
+          - Name: STACK_NAME
+            Value: !Ref StackName
+            Type: PLAINTEXT
+          - Name: AWS_REGION
+            Type: PLAINTEXT
+            Value: !Ref REGION
+          - Name: S3_BUCKET
+            Type: PLAINTEXT
+            Value: !Ref CodeRepoName
+          - Name: GIT_ASKPASS
+            Type: PLAINTEXT
+            Value: /usr/bin/git-askpass-helper
+          - Name: CODE_REPO_NAME
+            Type: PLAINTEXT
+            Value: !Ref CodeRepoName
+          - Name: DEPLOYED_TEMPLATE
+            Type: PLAINTEXT
+            Value: s3-encryption-bucket.yaml
+          - Name: CODE_BUILD_SRC_DIR
+            Type: PLAINTEXT
+            Value: !Sub  /codebuild/output/main/${CodeRepoName}
+          - Name: ROLE_ARN_TOOLS
+            Type: PLAINTEXT
+            Value: arn:aws:iam::573185292006:role/bounded/bounded-codebuild-cross-account-role
+          - Name: ROLE_ARN_DEV
+            Type: PLAINTEXT
+            Value: "role arn to be used from dev account"
+          - Name: ROLE_ARN_SIT
+            Type: PLAINTEXT
+            Value: "role arn to be used from sit account"
+          - Name: ROLE_ARN_PROD
+            Type: PLAINTEXT
+            Value: "role arn to be used from prod account"
+        
+      
+      TimeoutInMinutes: 240
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+      Source:
+        Type: CODECOMMIT
+        Location: !Sub "https://git-codecommit.${REGION}.amazonaws.com/v1/repos/${CodeRepoName}"
+        GitCloneDepth: 1
+        #BuildSpec: |   "the buildspec will be uploaded to the codecommit repo created and it must not be in any folder"
+      Tags:
+        - Key: Team-Email
+          Value: !Ref TeamEmail
+        - Key: Team-Name
+          Value: !Ref TeamName
+
+ 
+  BoundedCodeBuildServiceRole: #creation of CodePipeLine Service role
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref "ServiceRoleName"
+      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: "/bounded/"
+      Policies:
+        - PolicyName: !Ref "ServicePolicyName"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 
+                 - "codepipeline:*"
+                 - "cloudformation:*"
+                 - "codecommit:*"
+                 - "ssm:*"
+                 - "logs:*"
+                Resource: "*"
+      Tags:
+        - Key: Team-Email
+          Value: !Ref TeamEmail
+        - Key: Tier
+          Value: 'MCA'
+        - Key: Team-Name
+          Value: !Ref TeamName
