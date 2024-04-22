@@ -41,7 +41,7 @@ Resources:
     Type: 'AWS::IAM::Role'
     Properties:
       RoleName: !Ref RoleName
-      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
+      # PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
