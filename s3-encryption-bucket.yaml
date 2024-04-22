@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: creating S3 Bucket
+
+Parameters:
+  Team:
+    Type: String
+    Description: the name of the team
+    Default: SGB-DevOps
+
+  TeamEmail:
+    Type: String
+    Description: team e-mail address
+
+  Env:
+    Type: String
+    Default: dev
+    Description: Environment the resources/ stack is deployed to
+    AllowedValues:
+      - "dev"
+      - "sit"
+      - "prod"
+
+
+
+Resources:
+  S3BucketEncryptionLambda:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub poc-poc-aws-${AWS::AccountId}-${Env}
+      VersioningConfiguration:
+        Status: Enabled
+     
+      Tags:
+        - Key: GroupName
+          Value: 'SGB-DevOps'
+        - Key: Environment
+          Value: !Ref Env
+        - Key: Team-Email
+          Value: 'SBG-DevOps@standardbank.onmicrosoft.com'
+        - Key: Tier
+          Value: 'MCA'
+
+
