@@ -1,0 +1,89 @@
+version: 0.2
+env:
+  shell: bash
+  git-credential-helper: yes
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+  
+  pre_build:
+    commands:
+      - git config --global user.email "codebuild@standardbank.co.za"
+      - git config --global user.name "CloudFormationDeploy"
+      - mkdir /root/.aws/
+      - git submodule update --remote --init
+      - git clone https://git-codecommit."${AWS_REGION}".amazonaws.com/v1/repos/"${CODE_REPO_NAME}"
+      - cd "${CODE_REPO_NAME}"/
+  
+  build:
+     commands:
+      - git rev-parse --abbrev-ref HEAD # Debugging purpose (TODO remove)
+
+      #conditional deployment logic
+      - |
+      
+        if [ "${DEPLOYMENT_TARGET}" = "735721437522" ]; then 
+          ROLE_ARN="${ROLE_ARN_DEV}"
+          ROLE_SESION_NAME="CodeBuildSession"
+          aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --region "${AWS_REGION}"
+          aws sts get-caller-identity
+          # Assume the role and retrieve temporary credentials
+          TEMP_CREDENTIALS=$(aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --query 'Credentials.[AccessKeyId, SecretAccessKey, SessionToken]' --output text)
+ 
+      
+        elif [ "${DEPLOYMENT_TARGET}" = "183723809405" ]; then
+          ROLE_ARN="${ROLE_ARN_SIT}"
+          ROLE_SESION_NAME="CodeBuildSession"
+          aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --region "${AWS_REGION}"
+          aws sts get-caller-identity
+          # Assume the role and retrieve temporary credentials
+          TEMP_CREDENTIALS=$(aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --query 'Credentials.[AccessKeyId, SecretAccessKey, SessionToken]' --output text)
+      
+        elif [ "${DEPLOYMENT_TARGET}" = "662040593462" ]; then
+          ROLE_ARN="${ROLE_ARN_PROD}"
+          ROLE_SESION_NAME="CodeBuildSession"
+          aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --region "${AWS_REGION}"
+          aws sts get-caller-identity
+          # Assume the role and retrieve temporary credentials
+          TEMP_CREDENTIALS=$(aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --query 'Credentials.[AccessKeyId, SecretAccessKey, SessionToken]' --output text)
+ 
+       
+        elif [ "${DEPLOYMENT_TARGET}" = "573185292006" ]; then
+          
+          ROLE_ARN="${ROLE_ARN_TOOLS}"
+          ROLE_SESION_NAME="CodeBuildSession"
+          aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --region "${AWS_REGION}"
+          aws sts get-caller-identity
+          # Assume the role and retrieve temporary credentials
+          TEMP_CREDENTIALS=$(aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --query 'Credentials.[AccessKeyId, SecretAccessKey, SessionToken]' --output text)   
+        
+        else
+          echo "invalid deployment target or account ID"
+          exit 1
+        
+        fi
+      
+
+          # Output:
+          # TEMP_ACCESS_KEY_ID TEMP_SECRET_ACCESS_KEY TEMP_SESSION_TOKEN
+      - TEMP_ACCESS_KEY_ID=$(echo $TEMP_CREDENTIALS | cut -d ' ' -f 1)
+      - TEMP_SECRET_ACCESS_KEY=$(echo $TEMP_CREDENTIALS | cut -d ' ' -f 2)
+      - TEMP_SESSION_TOKEN=$(echo $TEMP_CREDENTIALS | cut -d ' ' -f 3)
+      
+          #Set temporary credentials as environment variables
+      - export AWS_ACCESS_KEY_ID=$TEMP_ACCESS_KEY_ID
+      - export AWS_SECRET_ACCESS_KEY=$TEMP_SECRET_ACCESS_KEY
+      - export AWS_SESSION_TOKEN=$TEMP_SESSION_TOKEN
+
+      - aws cloudformation package --template-file "${DEPLOYED_TEMPLATE}" --s3-bucket "${S3_BUCKET}" --output-template-file packaged-template.yaml
+      - aws cloudformation validate-template --template-body file://packaged-template.yaml
+      - aws cloudformation deploy --template-file packaged-template.yaml --stack-name "${STACK_NAME}" --region "${AWS_REGION}"
+      - aws cloudformation describe-stack-events --stack-name "${STACK_NAME}"
+     
+     
+  
+  post_build:
+    commands:
+    - echo 'the build is done'
