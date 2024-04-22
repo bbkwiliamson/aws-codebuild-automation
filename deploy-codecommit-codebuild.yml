@@ -6,7 +6,7 @@ Parameters:
   
   TeamEmail:
     Type: String
-    Default: sbg-devops@standardbank.co.za
+    Default: sbg-devops@example
     Description: team e-amil address
   
   TeamName:
@@ -145,13 +145,13 @@ Resources:
             Value: arn:aws:iam::573185292006:role/bounded/bounded-codebuild-cross-account-role
           - Name: ROLE_ARN_DEV
             Type: PLAINTEXT
-            Value: "role arn to be used from dev account"
+            Value: "replace with role arn to be used from dev account"
           - Name: ROLE_ARN_SIT
             Type: PLAINTEXT
-            Value: "role arn to be used from sit account"
+            Value: "replace with role arn to be used from sit account"
           - Name: ROLE_ARN_PROD
             Type: PLAINTEXT
-            Value: "role arn to be used from prod account"
+            Value: "replace with role arn to be used from prod account"
         
       
       TimeoutInMinutes: 240
@@ -174,7 +174,7 @@ Resources:
     Type: 'AWS::IAM::Role'
     Properties:
       RoleName: !Ref "ServiceRoleName"
-      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
+      # PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -197,6 +197,7 @@ Resources:
                  - "codecommit:*"
                  - "ssm:*"
                  - "logs:*"
+      
                 Resource: "*"
       Tags:
         - Key: Team-Email
