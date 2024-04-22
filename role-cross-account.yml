@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: creating role in each account codebuild service will assume
+
+Parameters:
+  RoleName:
+    Type: String
+    Default: bounded-codebuild-cross-account-role
+  
+  PolicyName: 
+    Type: String
+    Default: bounded-codebuild-cross-account-policy
+  
+  CodeBuildName:
+    Type: String
+    Default: aws-codebuild-poc-example
+    Description: the name of the CodeBuild project
+  
+  REGION:
+    Type: String
+    Default: "af-south-1"
+    Description: this is the region where cloudformation will deploy the stack in the specific account
+    AllowedValues:
+      - "af-south-1"    #Cape Town
+      - "eu-west-1"     #Ireland
+      - "us-east-1"     #north virginia
+      - "eu-central-1"  #Frankfurt
+  DeploymentID:
+    Type: String
+    Default: "573185292006"
+    Description: this represent the aws account ID
+    AllowedValues:
+      - "573185292006"  #tools-account
+      - "735721437522" #DEV
+      - "662040593462"  #PROD
+      - "183723809405"  #SIT
+      - "866715056275"  #ZERO-BILLING
+  
+Resources:
+  BoundedCodeBuildRole: 
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref RoleName
+      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: "735721437522"
+            Action:
+              - 'sts:AssumeRole'
+            
+      Path: "/bounded/"
+      Policies:
+        - PolicyName: !Ref PolicyName
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 
+                 - "cloudformation:*" 
+                 - "logs:*"
+                Resource: "*"
+     
+  
