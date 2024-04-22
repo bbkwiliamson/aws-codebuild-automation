@@ -21,10 +21,10 @@ phases:
      commands:
       - git rev-parse --abbrev-ref HEAD # Debugging purpose (TODO remove)
 
-      #conditional deployment logic
+      #conditional deployment logic and replace AccountID with the actual account IDs of your AWS Accounts for DEV, PROD, SIT, TEST, etc....
       - |
       
-        if [ "${DEPLOYMENT_TARGET}" = "735721437522" ]; then 
+        if [ "${DEPLOYMENT_TARGET}" = "AccountID" ]; then 
           ROLE_ARN="${ROLE_ARN_DEV}"
           ROLE_SESION_NAME="CodeBuildSession"
           aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --region "${AWS_REGION}"
@@ -33,7 +33,7 @@ phases:
           TEMP_CREDENTIALS=$(aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --query 'Credentials.[AccessKeyId, SecretAccessKey, SessionToken]' --output text)
  
       
-        elif [ "${DEPLOYMENT_TARGET}" = "183723809405" ]; then
+        elif [ "${DEPLOYMENT_TARGET}" = "AccountID" ]; then
           ROLE_ARN="${ROLE_ARN_SIT}"
           ROLE_SESION_NAME="CodeBuildSession"
           aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --region "${AWS_REGION}"
@@ -41,7 +41,7 @@ phases:
           # Assume the role and retrieve temporary credentials
           TEMP_CREDENTIALS=$(aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --query 'Credentials.[AccessKeyId, SecretAccessKey, SessionToken]' --output text)
       
-        elif [ "${DEPLOYMENT_TARGET}" = "662040593462" ]; then
+        elif [ "${DEPLOYMENT_TARGET}" = "AccountID" ]; then
           ROLE_ARN="${ROLE_ARN_PROD}"
           ROLE_SESION_NAME="CodeBuildSession"
           aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --region "${AWS_REGION}"
@@ -50,7 +50,7 @@ phases:
           TEMP_CREDENTIALS=$(aws sts assume-role --role-arn $ROLE_ARN --role-session-name $ROLE_SESION_NAME --query 'Credentials.[AccessKeyId, SecretAccessKey, SessionToken]' --output text)
  
        
-        elif [ "${DEPLOYMENT_TARGET}" = "573185292006" ]; then
+        elif [ "${DEPLOYMENT_TARGET}" = "AccountID" ]; then
           
           ROLE_ARN="${ROLE_ARN_TOOLS}"
           ROLE_SESION_NAME="CodeBuildSession"
