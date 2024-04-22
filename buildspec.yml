@@ -10,7 +10,7 @@ phases:
   
   pre_build:
     commands:
-      - git config --global user.email "codebuild@standardbank.co.za"
+      - git config --global user.email "codebuild@brian-bapela.com"
       - git config --global user.name "CloudFormationDeploy"
       - mkdir /root/.aws/
       - git submodule update --remote --init
