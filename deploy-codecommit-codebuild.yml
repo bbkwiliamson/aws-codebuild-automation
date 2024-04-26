@@ -6,7 +6,7 @@ Parameters:
   
   TeamEmail:
     Type: String
-    Default: sbg-devops@example
+    Default: brain.bapela@standardbank.co.za
     Description: team e-amil address
   
   TeamName:
@@ -18,7 +18,6 @@ Parameters:
     Type: String
     Default: aws-codebuild-poc-example
     Description: the name of the CodeBuild project
-  
   CodeRepoName: #use small letters
     Type: String
     Default: aws-codebuild-poc-example
@@ -28,19 +27,14 @@ Parameters:
     Type: String
     Default: Bounded-policy-codebuild-deploy-example
     Description: a policy attached to the codebuild service role
-  
   ServiceRoleName:
     Type: String
     Default: Bounded-codebuild-service-role-example
     Description: a service role used by codebuild
-  
-  #a role that will be assumed for cross-account access
-  RoleNameCross:
+  SNSTopicName:
     Type: String
-    Default: Bounded-codebuild-service-role-cross-poc
-  PolicyNameCross: 
-    Type: String
-    Default: bounded-codebuild-service-policy-cross
+    Default: codebuild-event-notify-example
+    Description: sns topic for sending notifications 
   
 
     #make sure the default value here is the account you are deploying to: this account IDs are linked to credentials of the respective accounts
@@ -102,6 +96,24 @@ Resources:
         - Key: Team-Name
           Value: !Ref TeamName
   
+  SNSTopicCodeBuild:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Ref SNSTopicName
+      Tags:
+        - Key: GroupName
+          Value: !Ref TeamName
+        - Key: Team-Email
+          Value: !Ref TeamEmail
+        - Key: Tier
+          Value: 'MCA'
+          
+  SNSTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref TeamEmail
+      Protocol: "Email"
+      TopicArn: !Ref SNSTopicCodeBuild
 
   AWSCodeBuild:
     Type: AWS::CodeBuild::Project
@@ -128,6 +140,9 @@ Resources:
           - Name: S3_BUCKET
             Type: PLAINTEXT
             Value: !Ref CodeRepoName
+          - Name: SNS_TOPIC
+            Type: PLAINTEXT
+            Value: !Sub arn:aws:sns:${REGION}:${AWS::AccountId}:${SNSTopicName}
           - Name: GIT_ASKPASS
             Type: PLAINTEXT
             Value: /usr/bin/git-askpass-helper
@@ -145,13 +160,13 @@ Resources:
             Value: arn:aws:iam::573185292006:role/bounded/bounded-codebuild-cross-account-role
           - Name: ROLE_ARN_DEV
             Type: PLAINTEXT
-            Value: "replace with role arn to be used from dev account"
+            Value: "role arn to be used from dev account"
           - Name: ROLE_ARN_SIT
             Type: PLAINTEXT
-            Value: "replace with role arn to be used from sit account"
+            Value: "role arn to be used from sit account"
           - Name: ROLE_ARN_PROD
             Type: PLAINTEXT
-            Value: "replace with role arn to be used from prod account"
+            Value: "role arn to be used from prod account"
         
       
       TimeoutInMinutes: 240
@@ -174,7 +189,7 @@ Resources:
     Type: 'AWS::IAM::Role'
     Properties:
       RoleName: !Ref "ServiceRoleName"
-      # PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
+      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -192,12 +207,10 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: 
-                 - "codepipeline:*"
                  - "cloudformation:*"
                  - "codecommit:*"
-                 - "ssm:*"
                  - "logs:*"
-      
+                 - "sns:*"
                 Resource: "*"
       Tags:
         - Key: Team-Email
