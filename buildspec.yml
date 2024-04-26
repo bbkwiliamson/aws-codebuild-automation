@@ -86,4 +86,15 @@ phases:
   
   post_build:
     commands:
-    - echo 'the build is done'
+     - unset AWS_ACCESS_KEY_ID
+     - unset AWS_SECRET_ACCESS_KEY
+     - unset AWS_SESSION_TOKEN
+     - echo 'codebuild has now stopped using the role of the other account'
+     - |
+       if [ $? -eq 0 ]; then
+         aws sns publish --topic-arn "${SNS_TOPIC}" --subject "The Build has Succeeded" --message "The Build Status is: SUCCEEDED"
+       else
+         aws sns publish --topic-arn "${SNS_TOPIC}" --subject "The Build has Failed" --message "The Build Status is: FAILED"
+       fi
+     - echo 'the build is done running'
+    
