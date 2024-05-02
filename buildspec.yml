@@ -13,7 +13,7 @@ phases:
       - git config --global user.email "codebuild@brian-bapela.com"
       - git config --global user.name "CloudFormationDeploy"
       - mkdir /root/.aws/
-      - git submodule update --remote --init
+      #- git submodule update --remote --init --recursive
       - git clone https://git-codecommit."${AWS_REGION}".amazonaws.com/v1/repos/"${CODE_REPO_NAME}"
       - cd "${CODE_REPO_NAME}"/
   
