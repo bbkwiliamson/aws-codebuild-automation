@@ -6,7 +6,7 @@ Parameters:
   
   TeamEmail:
     Type: String
-    Default: brain.bapela@standardbank.co.za
+    Default: bbkwiliamson.ovi@gmail.com
     Description: team e-amil address
   
   TeamName:
@@ -22,15 +22,27 @@ Parameters:
     Type: String
     Default: aws-codebuild-poc-example
     Description: the name of the Codecommit used by codebuild
+  CodePipelineName:
+    Type: String
+    Default: code-pipeline-example-poc
+    Description: the codepipeline that will trigger the builds automatically
   
-  ServicePolicyName:
+  ServicePolicyName: #codebuild service policy
     Type: String
     Default: Bounded-policy-codebuild-deploy-example
     Description: a policy attached to the codebuild service role
-  ServiceRoleName:
+  ServiceRoleName: #codebuild service role
     Type: String
     Default: Bounded-codebuild-service-role-example
     Description: a service role used by codebuild
+  ServiceRoleNameLine: #codepipeline service role
+    Type: String
+    Default: Bounded-codepipeline-service-role-example
+    Description: a service role used by codepipeline
+  ServicePolicyNameLine: #codepipeline service policy
+    Type: String
+    Default: Bounded-policy-codepipeline-example
+    Description: a policy attached to the codepipeline service role
   SNSTopicName:
     Type: String
     Default: codebuild-event-notify-example
@@ -41,14 +53,14 @@ Parameters:
     #once this has been deployed, this change can be done manually on the console as the deployment is moving to a different account
   DeploymentID:
     Type: String
-    Default: "573185292006"
+    Default: "573185"
     Description: this represent the aws account ID
     AllowedValues:
-      - "573185292006"  #tools-account
-      - "735721437522" #DEV
-      - "662040593462"  #PROD
-      - "183723809405"  #SIT
-      - "866715056275"  #ZERO-BILLING
+      - "573185"  #tools-account
+      - "735721" #DEV
+      - "662040"  #PROD
+      - "183723"  #SIT
+      - "866715"  #ZERO-BILLING
  
   StackName: #the name should be the same as of that already existing on cloudformation or be the same name you create on cloudformation when deploying this stack
     Type: String
@@ -211,6 +223,7 @@ Resources:
                  - "codecommit:*"
                  - "logs:*"
                  - "sns:*"
+                 - "s3:*"
                 Resource: "*"
       Tags:
         - Key: Team-Email
@@ -219,3 +232,93 @@ Resources:
           Value: 'MCA'
         - Key: Team-Name
           Value: !Ref TeamName
+
+#codepipeline for triggering the builds when there is a change in the source code.
+  BoundedCodePipelineServiceRole: #creation of CodePipeLine Service role
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref ServiceRoleNameLine
+      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/BoundedPermissionsPolicy"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: "/bounded/"
+      Policies:
+        - PolicyName: !Ref ServicePolicyNameLine
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 
+                 - "codepipeline:*"
+                 - "cloudtrail:*"
+                 - "codebuild:*"
+                 - "cloudformation:*"
+                 - "codedeploy:*"
+                 - "codecommit:*"
+                 - "kms:*"
+                 - "sns:*"
+                 - "logs:*"
+                 - "cloudwatch:*"
+                 - "s3:*"
+                Resource: "*"
+
+  MyPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Ref CodePipelineName
+      RoleArn: !GetAtt BoundedCodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref S3BucketCodeBuild #arn:aws:s3:::build-codecommit-poc
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: 1
+              Configuration:
+                RepositoryName: !Ref CodeRepoName # your aws CodeCommit repo name
+                BranchName: main
+              OutputArtifacts:
+                - Name: SourceOutput
+        
+        - Name: Approval
+          Actions:
+            - Name: ManualApprovalAction
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: 1
+              Configuration:
+                NotificationArn: !Sub arn:aws:sns:${REGION}:${AWS::AccountId}:${SNSTopicName}
+                ExternalEntityLink: !Sub "https://console.aws.amazon.com/codesuite/codepipeline/pipelines/${StackName}/view?region=${REGION}"
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Owner: AWS
+                Category: Build
+                Version: "1"
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuildName
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput 
+
+
+
+
