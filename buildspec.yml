@@ -68,6 +68,7 @@ phases:
 
           # Output:
           # TEMP_ACCESS_KEY_ID TEMP_SECRET_ACCESS_KEY TEMP_SESSION_TOKEN
+          # getting temporary credentials on runtime to access the account using the role provided
       - TEMP_ACCESS_KEY_ID=$(echo $TEMP_CREDENTIALS | cut -d ' ' -f 1)
       - TEMP_SECRET_ACCESS_KEY=$(echo $TEMP_CREDENTIALS | cut -d ' ' -f 2)
       - TEMP_SESSION_TOKEN=$(echo $TEMP_CREDENTIALS | cut -d ' ' -f 3)
