@@ -7,6 +7,7 @@ deploying to cloudformation using codebuild
 in this file, all you need to do is replace **AccountID** on (IF-STATEMENTS) to be or reflect those of your own actual accountIDs, otherwise there is nothing to change from the code perspective
 
 this file must be deployed into the codecommit repo used by codebuild
+the good thing is that this allows multi template deployment
 
 # role-cross-account.yml
 
